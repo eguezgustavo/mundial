@@ -1,0 +1,54 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Users: readable by all clients (needed for leaderboard).
+    // Writes are admin-only via the Python sync app (service account bypasses rules).
+    match /users/{userId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // Matches: readable by all clients.
+    // Writes are admin-only via the Python sync app.
+    match /matches/{matchId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // Predictions: readable by all (leaderboard), writable by anyone with a valid structure.
+    // The doc ID must be {userId}_{matchId} and userId must be set.
+    // Clients cannot set the `points` field — that is written by the Python sync app only.
+    match /predictions/{predId} {
+      allow read: if true;
+      allow create: if request.resource.data.keys().hasAll([
+                        'userId', 'matchId', 'predictedWinner',
+                        'predictedHomeScore', 'predictedAwayScore', 'submittedAt'
+                      ])
+                    && request.resource.data.predictedWinner in ['home', 'away', 'tie']
+                    && request.resource.data.predictedHomeScore is int
+                    && request.resource.data.predictedAwayScore is int
+                    && request.resource.data.predictedHomeScore >= 0
+                    && request.resource.data.predictedAwayScore >= 0
+                    && !('points' in request.resource.data);
+      allow update: if request.resource.data.keys().hasAll([
+                        'userId', 'matchId', 'predictedWinner',
+                        'predictedHomeScore', 'predictedAwayScore', 'submittedAt'
+                      ])
+                    && request.resource.data.predictedWinner in ['home', 'away', 'tie']
+                    && request.resource.data.predictedHomeScore is int
+                    && request.resource.data.predictedAwayScore is int
+                    && request.resource.data.predictedHomeScore >= 0
+                    && request.resource.data.predictedAwayScore >= 0
+                    // Prevent clients from modifying the points field once set
+                    && (!('points' in resource.data) || request.resource.data.points == resource.data.points);
+      allow delete: if false;
+    }
+
+    // Config: blocked entirely from clients.
+    // The Python sync app reads secrets via its own environment variables.
+    match /config/{configId} {
+      allow read, write: if false;
+    }
+  }
+}
