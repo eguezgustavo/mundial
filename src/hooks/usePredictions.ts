@@ -44,7 +44,6 @@ export function usePredictions(userId: string) {
       predictedHomeScore,
       predictedAwayScore,
       submittedAt: Timestamp.now(),
-      points: null,
     });
   };
 
