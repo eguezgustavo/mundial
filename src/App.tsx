@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { TokenGate } from './components/auth/TokenGate';
 import { BottomNav } from './components/layout/BottomNav';
 import { RulesModal } from './components/ui/RulesModal';
+import { TodayPage } from './pages/TodayPage';
 import { Home } from './pages/Home';
 import { LeaderboardPage } from './pages/LeaderboardPage';
 import { AdminPage } from './pages/AdminPage';
@@ -37,7 +38,8 @@ function App() {
             {/* Main content */}
             <main className="max-w-lg mx-auto px-4 py-4">
               <Routes>
-                <Route path="/" element={<Home user={user} />} />
+                <Route path="/" element={<TodayPage user={user} />} />
+                <Route path="/predictions" element={<Home user={user} />} />
                 <Route path="/leaderboard" element={<LeaderboardPage user={user} />} />
                 <Route path="/admin" element={<AdminPage user={user} />} />
               </Routes>

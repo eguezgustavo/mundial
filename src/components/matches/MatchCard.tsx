@@ -8,6 +8,7 @@ interface MatchCardProps {
   match: Match;
   prediction?: Prediction;
   user: User;
+  now?: Date;
   onSubmitPrediction: (matchId: string, winner: PredictedWinner, homeScore: number, awayScore: number) => Promise<void>;
 }
 
@@ -26,9 +27,9 @@ const WINNER_LABEL: Record<PredictedWinner, string> = {
   tie: 'Empate',
 };
 
-export function MatchCard({ match, prediction, onSubmitPrediction }: MatchCardProps) {
+export function MatchCard({ match, prediction, now, onSubmitPrediction }: MatchCardProps) {
   const matchDate = match.matchDate.toDate();
-  const deadlinePassed = isPredictionDeadlinePassed(matchDate);
+  const deadlinePassed = isPredictionDeadlinePassed(matchDate, now);
   const isFinished = match.status === 'finished';
 
   const stageLabel = STAGE_LABELS[match.stage] ?? match.stage;
@@ -93,7 +94,7 @@ export function MatchCard({ match, prediction, onSubmitPrediction }: MatchCardPr
         <div className="mt-3 pt-3 border-t border-white/10">
           {prediction ? (
             <p className="text-white/50 text-sm text-center">
-              Bloqueado: {prediction.predictedHomeScore}–{prediction.predictedAwayScore} · {WINNER_LABEL[prediction.predictedWinner]}
+              🔒 Tu pronóstico: <span className="text-white">{prediction.predictedHomeScore}–{prediction.predictedAwayScore}</span> · {WINNER_LABEL[prediction.predictedWinner]}
             </p>
           ) : (
             <p className="text-red-400/70 text-sm text-center">Pronósticos cerrados · Sin pronóstico</p>

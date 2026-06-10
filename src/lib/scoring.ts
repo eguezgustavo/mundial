@@ -22,7 +22,7 @@ export function calculatePoints(match: Match, prediction: Prediction): number {
   return 0;
 }
 
-export function isPredictionDeadlinePassed(matchDate: Date): boolean {
+export function isPredictionDeadlinePassed(matchDate: Date, now: Date = new Date()): boolean {
   // Deadline: 23:59 UTC-5 the day BEFORE the match
   const utcMinus5Offset = 5 * 60; // minutes
   const matchLocal = new Date(matchDate.getTime() - utcMinus5Offset * 60 * 1000);
@@ -33,5 +33,5 @@ export function isPredictionDeadlinePassed(matchDate: Date): boolean {
   deadline.setTime(deadline.getTime() - 60 * 1000);
   // Convert back to UTC for comparison
   const deadlineUTC = new Date(deadline.getTime() + utcMinus5Offset * 60 * 1000);
-  return new Date() > deadlineUTC;
+  return now > deadlineUTC;
 }
