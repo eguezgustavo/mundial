@@ -26,7 +26,7 @@ export function TodayPage({ user }: TodayPageProps) {
 
   if (matchesLoading || predsLoading) return <Spinner className="py-12" />;
 
-  const today = new Date(2026, 5, 11); // TODO: revert to new Date()
+  const today = new Date();
   const todayMatches = matches.filter((m) => isSameLocalDay(m.matchDate.toDate(), today));
 
   if (todayMatches.length === 0) {
