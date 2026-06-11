@@ -25,28 +25,24 @@ def get_db():
 
     try:
         import firebase_admin
-        from firebase_admin import credentials, firestore as fs
+        from firebase_admin import firestore as fs
     except ImportError:
         print("ERROR: firebase-admin is not installed. Run: uv sync")
         sys.exit(1)
 
-    service_account_path = os.environ.get("FIREBASE_SERVICE_ACCOUNT_PATH", "./serviceAccount.json")
-    if not os.path.exists(service_account_path):
-        print(
-            f"ERROR: Firebase service account file not found at '{service_account_path}'.\n"
-            "Download it from the Firebase console → Project settings → Service accounts."
-        )
-        sys.exit(1)
+    if not firebase_admin._apps:
+        service_account_path = os.environ.get("FIREBASE_SERVICE_ACCOUNT_PATH", "./serviceAccount.json")
+        if os.path.exists(service_account_path):
+            from firebase_admin import credentials
+            cred = credentials.Certificate(service_account_path)
+            firebase_admin.initialize_app(cred)
+            print(f"Connected to Firestore using service account: {service_account_path}")
+        else:
+            # Running in Cloud Functions — use Application Default Credentials
+            firebase_admin.initialize_app()
+            print("Connected to Firestore using Application Default Credentials")
 
-    try:
-        cred = credentials.Certificate(service_account_path)
-        firebase_admin.initialize_app(cred)
-        _db = fs.client()
-        print(f"Connected to Firestore using service account: {service_account_path}")
-    except Exception as exc:
-        print(f"ERROR: Failed to initialise Firebase: {exc}")
-        sys.exit(1)
-
+    _db = fs.client()
     return _db
 
 

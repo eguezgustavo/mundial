@@ -1,0 +1,33 @@
+name: Daily sync
+
+on:
+  schedule:
+    - cron: '0 5 * * *'  # 00:00 UTC-5
+  workflow_dispatch:      # allow manual trigger from GitHub UI
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r sync/requirements.txt
+
+      - name: Write service account
+        env:
+          SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+        run: echo "$SERVICE_ACCOUNT" > sync/serviceAccount.json
+
+      - name: Sync results
+        run: python main.py sync-results
+        working-directory: sync
+
+      - name: Process scores
+        run: python main.py process-scores
+        working-directory: sync
