@@ -9,7 +9,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from api_football import fetch_matches, build_match_doc
+from api_football import fetch_matches, build_match_doc, make_doc_id
+from espn import fetch_finished_matches
 from firebase_client import get_db, commit_batches, BATCH_SIZE
 from scoring import calculate_points
 
@@ -49,11 +50,9 @@ def cmd_sync_matches():
 
 
 def cmd_sync_results():
-    """Fetch finished fixtures from OpenFootball and update score/status in Firestore."""
-    print("Fetching fixtures from OpenFootball …")
-    matches = fetch_matches()
-
-    finished = [m for m in matches if m.get("score1") is not None and m.get("score2") is not None]
+    """Fetch finished matches from ESPN and update score/status in Firestore."""
+    print("Fetching finished matches from ESPN …")
+    finished = fetch_finished_matches()
 
     if not finished:
         print("No finished matches found yet. Nothing to update.")
@@ -66,24 +65,22 @@ def cmd_sync_results():
 
     operations = []
     for match in finished:
-        doc_id, full_doc = build_match_doc(match)
-        if not doc_id:
-            continue
+        doc_id = make_doc_id(match["date_str"], match["home_team"], match["away_team"])
         partial_doc = {
-            "homeScore": full_doc["homeScore"],
-            "awayScore": full_doc["awayScore"],
-            "status": full_doc["status"],
+            "homeScore": match["home_score"],
+            "awayScore": match["away_score"],
+            "status": "finished",
         }
         operations.append((matches_col.document(doc_id), partial_doc, True))
 
-    print(f"Updating {len(operations)} match results in Firestore …")
+    print(f"Updating {len(operations)} match result(s) in Firestore …")
     for i in range(0, len(operations), BATCH_SIZE):
         db_batch = db.batch()
         for doc_ref, data, merge in operations[i : i + BATCH_SIZE]:
             db_batch.set(doc_ref, data, merge=merge)
         db_batch.commit()
 
-    print(f"Updated {len(operations)} match results")
+    print(f"Updated {len(operations)} match result(s)")
 
 
 def cmd_process_scores():
