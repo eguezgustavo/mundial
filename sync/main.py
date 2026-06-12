@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from api_football import fetch_matches, build_match_doc, make_doc_id
+from api_football import fetch_matches, build_match_doc
 from espn import fetch_finished_matches
 from firebase_client import get_db, commit_batches, BATCH_SIZE
 from scoring import calculate_points
@@ -65,13 +65,22 @@ def cmd_sync_results():
 
     operations = []
     for match in finished:
-        doc_id = make_doc_id(match["date_str"], match["home_team"], match["away_team"])
+        docs = list(
+            matches_col
+            .where("homeTeam", "==", match["home_team"])
+            .where("awayTeam", "==", match["away_team"])
+            .limit(1)
+            .stream()
+        )
+        if not docs:
+            print(f"WARNING: No Firestore doc found for {match['home_team']} vs {match['away_team']}")
+            continue
         partial_doc = {
             "homeScore": match["home_score"],
             "awayScore": match["away_score"],
             "status": "finished",
         }
-        operations.append((matches_col.document(doc_id), partial_doc, True))
+        operations.append((docs[0].reference, partial_doc, True))
 
     print(f"Updating {len(operations)} match result(s) in Firestore …")
     for i in range(0, len(operations), BATCH_SIZE):
