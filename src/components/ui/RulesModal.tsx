@@ -58,7 +58,7 @@ export function RulesModal({ onClose }: RulesModalProps) {
           <ul className="space-y-2 text-white/70 text-sm">
             <li className="flex items-start gap-2">
               <span className="text-white/40 mt-0.5">•</span>
-              <span>El plazo para enviar tu pronóstico es hasta las <strong className="text-white">23:59 hora Colombia</strong> del día anterior al partido.</span>
+              <span>El plazo para enviar tu pronóstico es hasta <strong className="text-white">20 minutos antes</strong> del inicio del partido.</span>
             </li>
             <li className="flex items-start gap-2">
               <span className="text-white/40 mt-0.5">•</span>
