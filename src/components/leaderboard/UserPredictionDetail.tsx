@@ -3,6 +3,7 @@ import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { User, Prediction, Match } from '../../types';
 import { Spinner } from '../ui/Spinner';
+import { TeamLogo } from '../ui/TeamLogo';
 
 interface Props {
   user: User;
@@ -88,11 +89,13 @@ export function UserPredictionDetail({ user, onClose }: Props) {
                           return (
                             <tr key={pred.id} className="border-b border-white/5 last:border-0">
                               <td className="py-2.5 px-3 text-white/70 text-xs leading-snug">
-                                <span>{match.homeTeamFlag}</span>
-                                <span className="mx-1">{match.homeTeam}</span>
-                                <span className="text-white/30">vs</span>
-                                <span className="mx-1">{match.awayTeam}</span>
-                                <span>{match.awayTeamFlag}</span>
+                                <span className="inline-flex items-center gap-1">
+                                  <TeamLogo src={match.homeTeamFlag} name={match.homeTeam} className="w-4 h-4" />
+                                  <span>{match.homeTeam}</span>
+                                  <span className="text-white/30">vs</span>
+                                  <span>{match.awayTeam}</span>
+                                  <TeamLogo src={match.awayTeamFlag} name={match.awayTeam} className="w-4 h-4" />
+                                </span>
                               </td>
                               <td className="py-2.5 px-2 text-center text-white font-mono text-xs">
                                 {pred.predictedHomeScore}–{pred.predictedAwayScore}
@@ -130,11 +133,13 @@ export function UserPredictionDetail({ user, onClose }: Props) {
                           return (
                             <tr key={pred.id} className="border-b border-white/5 last:border-0">
                               <td className="py-2.5 px-3 text-white/50 text-xs leading-snug">
-                                <span>{match.homeTeamFlag}</span>
-                                <span className="mx-1">{match.homeTeam}</span>
-                                <span className="text-white/30">vs</span>
-                                <span className="mx-1">{match.awayTeam}</span>
-                                <span>{match.awayTeamFlag}</span>
+                                <span className="inline-flex items-center gap-1">
+                                  <TeamLogo src={match.homeTeamFlag} name={match.homeTeam} className="w-4 h-4" />
+                                  <span>{match.homeTeam}</span>
+                                  <span className="text-white/30">vs</span>
+                                  <span>{match.awayTeam}</span>
+                                  <TeamLogo src={match.awayTeamFlag} name={match.awayTeam} className="w-4 h-4" />
+                                </span>
                               </td>
                               <td className="py-2.5 px-3 text-right text-white/50 font-mono text-xs">
                                 {pred.predictedHomeScore}–{pred.predictedAwayScore}

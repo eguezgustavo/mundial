@@ -10,7 +10,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from api_football import fetch_matches, build_match_doc
-from espn import fetch_finished_matches
+from espn import fetch_finished_matches, fetch_team_logos
 from firebase_client import get_db, commit_batches, BATCH_SIZE
 from scoring import calculate_points
 
@@ -154,6 +154,54 @@ def cmd_process_scores():
     print(f"Processed {total_processed} prediction(s), updated {len(user_ops)} user score(s)")
 
 
+def cmd_sync_logos():
+    """
+    Fetch team logo URLs from ESPN for all match dates and update homeTeamFlag/awayTeamFlag
+    in every Firestore match document.
+    """
+    db = get_db()
+    matches_col = db.collection("matches")
+
+    all_matches = list(matches_col.stream())
+    date_strs = sorted({
+        snap.to_dict()["matchDate"].strftime("%Y%m%d")
+        for snap in all_matches
+        if snap.to_dict().get("matchDate")
+    })
+
+    print(f"Fetching logos from ESPN for {len(date_strs)} date(s) …")
+    logos = fetch_team_logos(date_strs)
+    print(f"Found logos for {len(logos)} team(s).")
+
+    operations = []
+    missing: set[str] = set()
+    for snap in all_matches:
+        m = snap.to_dict()
+        home, away = m.get("homeTeam", ""), m.get("awayTeam", "")
+        updates: dict = {}
+        if home in logos:
+            updates["homeTeamFlag"] = logos[home]
+        else:
+            missing.add(home)
+        if away in logos:
+            updates["awayTeamFlag"] = logos[away]
+        else:
+            missing.add(away)
+        if updates:
+            operations.append((snap.reference, updates, True))
+
+    if missing:
+        print(f"WARNING: No logo found for: {', '.join(sorted(missing))}")
+
+    print(f"Updating {len(operations)} match document(s) …")
+    for i in range(0, len(operations), BATCH_SIZE):
+        batch = db.batch()
+        for ref, data, merge in operations[i : i + BATCH_SIZE]:
+            batch.set(ref, data, merge=merge)
+        batch.commit()
+    print(f"Updated {len(operations)} match document(s).")
+
+
 # ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
@@ -162,6 +210,7 @@ COMMANDS = {
     "sync-matches": cmd_sync_matches,
     "sync-results": cmd_sync_results,
     "process-scores": cmd_process_scores,
+    "sync-logos": cmd_sync_logos,
 }
 
 USAGE = """\

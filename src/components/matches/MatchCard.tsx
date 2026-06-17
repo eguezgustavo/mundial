@@ -3,6 +3,7 @@ import { es } from 'date-fns/locale';
 import { Match, Prediction, User, PredictedWinner } from '../../types';
 import { isPredictionDeadlinePassed } from '../../lib/scoring';
 import { PredictionForm } from './PredictionForm';
+import { TeamLogo } from '../ui/TeamLogo';
 
 interface MatchCardProps {
   match: Match;
@@ -50,9 +51,9 @@ export function MatchCard({ match, prediction, now, onSubmitPrediction }: MatchC
       {/* Teams and score */}
       <div className="flex items-center gap-3">
         {/* Home team */}
-        <div className="flex-1 text-right">
-          <div className="text-lg">{match.homeTeamFlag}</div>
-          <div className="text-white text-sm font-semibold leading-tight">{match.homeTeam}</div>
+        <div className="flex-1 flex flex-col items-end gap-1">
+          <TeamLogo src={match.homeTeamFlag} name={match.homeTeam} className="w-10 h-10" />
+          <div className="text-white text-sm font-semibold leading-tight text-right">{match.homeTeam}</div>
         </div>
 
         {/* Score or VS */}
@@ -67,8 +68,8 @@ export function MatchCard({ match, prediction, now, onSubmitPrediction }: MatchC
         </div>
 
         {/* Away team */}
-        <div className="flex-1 text-left">
-          <div className="text-lg">{match.awayTeamFlag}</div>
+        <div className="flex-1 flex flex-col items-start gap-1">
+          <TeamLogo src={match.awayTeamFlag} name={match.awayTeam} className="w-10 h-10" />
           <div className="text-white text-sm font-semibold leading-tight">{match.awayTeam}</div>
         </div>
       </div>
