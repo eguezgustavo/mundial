@@ -17,6 +17,7 @@ ESPN_TO_OPENFOOTBALL: dict[str, str] = {
     "United States": "USA",
     "Türkiye": "Turkey",
     "Bosnia-Herzegovina": "Bosnia & Herzegovina",
+    "Congo DR": "DR Congo",
 }
 
 

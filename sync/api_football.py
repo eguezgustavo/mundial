@@ -189,7 +189,7 @@ def build_match_doc(match: dict) -> tuple[str, dict]:
     score2 = match.get("score2")
     is_finished = score1 is not None and score2 is not None
 
-    return doc_id, {
+    doc: dict = {
         "externalId": doc_id,
         "homeTeam": team1,
         "awayTeam": team2,
@@ -198,7 +198,11 @@ def build_match_doc(match: dict) -> tuple[str, dict]:
         "matchDate": match_dt,
         "stage": map_round_to_stage(round_str, has_group=bool(group_str)),
         "group": extract_group(group_str),
-        "homeScore": score1 if is_finished else None,
-        "awayScore": score2 if is_finished else None,
-        "status": "finished" if is_finished else "upcoming",
     }
+    # Only include result fields when OpenFootball knows the score — this prevents
+    # sync-matches from clobbering 'finished' status set by sync-results.
+    if is_finished:
+        doc["homeScore"] = score1
+        doc["awayScore"] = score2
+        doc["status"] = "finished"
+    return doc_id, doc

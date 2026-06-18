@@ -44,6 +44,12 @@ def cmd_sync_matches():
         print("No valid fixtures to write.")
         return
 
+    # Seed 'upcoming' only on brand-new documents so we never clobber sync-results data.
+    existing_ids = {snap.id for snap in matches_col.stream()}
+    for ref, doc, merge in operations:
+        if ref.id not in existing_ids and "status" not in doc:
+            doc["status"] = "upcoming"
+
     print(f"Writing {len(operations)} matches to Firestore …")
     created, updated = commit_batches(db, operations)
     print(f"Synced {len(operations)} matches ({created} created, {updated} updated)")
