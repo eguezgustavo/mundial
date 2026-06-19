@@ -3,9 +3,13 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     // Users: readable by all clients (needed for leaderboard).
-    // Writes are admin-only via the Python sync app (service account bypasses rules).
+    // Scores and isAdmin are written only by the Python sync app (service account bypasses rules).
+    // displayName updates are allowed from the client (admin UI rename feature).
     match /users/{userId} {
       allow read: if true;
+      allow update: if request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName'])
+                    && request.resource.data.displayName is string
+                    && request.resource.data.displayName.size() > 0;
       allow write: if false;
     }
 

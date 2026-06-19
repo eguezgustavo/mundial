@@ -11,6 +11,7 @@ export function UserList() {
   const [editing, setEditing] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const load = async () => {
     const snap = await getDocs(collection(db, 'users'));
@@ -33,17 +34,24 @@ export function UserList() {
   const cancelEdit = () => {
     setEditing(null);
     setEditName('');
+    setSaveError(null);
   };
 
   const saveName = async (token: string) => {
     const name = editName.trim();
     if (!name) return;
     setSaving(true);
-    await updateDoc(doc(db, 'users', token), { displayName: name });
-    setUsers((prev) => prev.map((u) => u.token === token ? { ...u, displayName: name } : u));
-    setEditing(null);
-    setEditName('');
-    setSaving(false);
+    setSaveError(null);
+    try {
+      await updateDoc(doc(db, 'users', token), { displayName: name });
+      setUsers((prev) => prev.map((u) => u.token === token ? { ...u, displayName: name } : u));
+      setEditing(null);
+      setEditName('');
+    } catch {
+      setSaveError('No se pudo guardar. Intenta de nuevo.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   if (!loaded) {
@@ -64,30 +72,33 @@ export function UserList() {
         {users.map((u) => (
           <div key={u.token} className="py-2 border-b border-white/5 last:border-0">
             {editing === u.token ? (
-              <div className="flex items-center gap-2">
-                <input
-                  autoFocus
-                  value={editName}
-                  onChange={(e) => setEditName(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') saveName(u.token);
-                    if (e.key === 'Escape') cancelEdit();
-                  }}
-                  className="flex-1 bg-white/10 text-white text-sm px-2 py-1 rounded border border-white/20 outline-none focus:border-[#ffd700]"
-                />
-                <button
-                  onClick={() => saveName(u.token)}
-                  disabled={saving}
-                  className="text-xs text-[#ffd700] hover:text-yellow-300 font-medium disabled:opacity-50"
-                >
-                  Guardar
-                </button>
-                <button
-                  onClick={cancelEdit}
-                  className="text-xs text-white/40 hover:text-white"
-                >
-                  Cancelar
-                </button>
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <input
+                    autoFocus
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') saveName(u.token);
+                      if (e.key === 'Escape') cancelEdit();
+                    }}
+                    className="flex-1 bg-white/10 text-white text-sm px-2 py-1 rounded border border-white/20 outline-none focus:border-[#ffd700]"
+                  />
+                  <button
+                    onClick={() => saveName(u.token)}
+                    disabled={saving}
+                    className="text-xs text-[#ffd700] hover:text-yellow-300 font-medium disabled:opacity-50"
+                  >
+                    {saving ? 'Guardando…' : 'Guardar'}
+                  </button>
+                  <button
+                    onClick={cancelEdit}
+                    className="text-xs text-white/40 hover:text-white"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+                {saveError && <p className="text-red-400 text-xs">{saveError}</p>}
               </div>
             ) : (
               <div className="flex items-center justify-between">
