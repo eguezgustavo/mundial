@@ -26,6 +26,10 @@ export function BottomNav({ user }: BottomNavProps) {
           <span className="text-xl">🏆</span>
           <span>Posiciones</span>
         </NavLink>
+        <NavLink to="/third-place" className={linkClass}>
+          <span className="text-xl">🥉</span>
+          <span>Mejor 3°</span>
+        </NavLink>
         {user.isAdmin && (
           <NavLink to="/admin" className={linkClass}>
             <span className="text-xl">⚙️</span>

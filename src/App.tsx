@@ -6,6 +6,7 @@ import { RulesModal } from './components/ui/RulesModal';
 import { TodayPage } from './pages/TodayPage';
 import { Home } from './pages/Home';
 import { LeaderboardPage } from './pages/LeaderboardPage';
+import { ThirdPlacePage } from './pages/ThirdPlacePage';
 import { AdminPage } from './pages/AdminPage';
 
 function App() {
@@ -41,6 +42,7 @@ function App() {
                 <Route path="/" element={<TodayPage user={user} />} />
                 <Route path="/predictions" element={<Home user={user} />} />
                 <Route path="/leaderboard" element={<LeaderboardPage user={user} />} />
+                <Route path="/third-place" element={<ThirdPlacePage />} />
                 <Route path="/admin" element={<AdminPage user={user} />} />
               </Routes>
             </main>
