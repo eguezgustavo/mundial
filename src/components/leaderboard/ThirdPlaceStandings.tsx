@@ -101,6 +101,7 @@ export function ThirdPlaceStandings() {
               <th className="py-2.5 px-3 text-left w-8">#</th>
               <th className="py-2.5 px-3 text-left">Equipo</th>
               <th className="py-2.5 px-2 text-center w-8" title="Grupo">Gr.</th>
+              <th className="py-2.5 px-2 text-center w-8" title="Partidos jugados">PJ</th>
               <th className="py-2.5 px-2 text-center w-8" title="Puntos">Pts</th>
               <th className="py-2.5 px-2 text-center w-8" title="Diferencia de goles">DG</th>
               <th className="py-2.5 px-2 text-center w-8" title="Goles a favor">GF</th>
@@ -126,6 +127,7 @@ export function ThirdPlaceStandings() {
                     </span>
                   </td>
                   <td className="py-2.5 px-2 text-center text-white/50 text-xs font-mono">{t.group}</td>
+                  <td className="py-2.5 px-2 text-center text-white/60 text-xs font-mono">{t.played}</td>
                   <td className={`py-2.5 px-2 text-center text-sm font-bold ${qualifies ? 'text-[#ffd700]' : 'text-white/40'}`}>
                     {t.points}
                   </td>
