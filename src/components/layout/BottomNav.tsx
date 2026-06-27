@@ -18,6 +18,10 @@ export function BottomNav({ user }: BottomNavProps) {
           <span className="text-xl">📅</span>
           <span>Hoy</span>
         </NavLink>
+        <NavLink to="/bracket" className={linkClass}>
+          <span className="text-xl">🗂️</span>
+          <span>Llave</span>
+        </NavLink>
         <NavLink to="/predictions" className={linkClass}>
           <span className="text-xl">⚽</span>
           <span>Tus predicciones</span>

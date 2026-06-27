@@ -4,6 +4,7 @@ import { TokenGate } from './components/auth/TokenGate';
 import { BottomNav } from './components/layout/BottomNav';
 import { RulesModal } from './components/ui/RulesModal';
 import { TodayPage } from './pages/TodayPage';
+import { BracketPage } from './pages/BracketPage';
 import { Home } from './pages/Home';
 import { LeaderboardPage } from './pages/LeaderboardPage';
 import { ThirdPlacePage } from './pages/ThirdPlacePage';
@@ -40,6 +41,7 @@ function App() {
             <main className="max-w-lg mx-auto px-4 py-4">
               <Routes>
                 <Route path="/" element={<TodayPage user={user} />} />
+                <Route path="/bracket" element={<BracketPage />} />
                 <Route path="/predictions" element={<Home user={user} />} />
                 <Route path="/leaderboard" element={<LeaderboardPage user={user} />} />
                 <Route path="/third-place" element={<ThirdPlacePage />} />
