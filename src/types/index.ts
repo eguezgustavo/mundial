@@ -1,6 +1,6 @@
 import { Timestamp } from 'firebase/firestore';
 
-export type Stage = 'group' | 'round_of_32' | 'round_of_16' | 'quarterfinal' | 'semifinal' | 'final';
+export type Stage = 'group' | 'round_of_32' | 'round_of_16' | 'quarterfinal' | 'semifinal' | 'third_place' | 'final';
 export type MatchStatus = 'upcoming' | 'finished';
 export type PredictedWinner = 'home' | 'away' | 'tie';
 

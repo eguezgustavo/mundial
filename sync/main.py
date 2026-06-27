@@ -1,62 +1,98 @@
 #!/usr/bin/env python3
 """
 FIFA World Cup 2026 Prediction App - Data Sync CLI
-Authoritative data processor: fetches from OpenFootball and writes to Firestore.
 """
 
 import sys
+from datetime import datetime, timezone, timedelta
 from dotenv import load_dotenv
 
 load_dotenv()
 
-from api_football import fetch_matches, build_match_doc
-from espn import fetch_finished_matches, fetch_team_logos
+from espn import fetch_events, fetch_finished_matches, fetch_team_logos
 from firebase_client import get_db, commit_batches, BATCH_SIZE
 from scoring import calculate_points
+
+
+# All remaining knockout stage date strings (YYYYMMDD).
+# ESPN groups late-night UTC events under the previous broadcast day, so we
+# include one extra date on each end and deduplicate inside fetch_events.
+KNOCKOUT_DATES = [
+    "20260628", "20260629", "20260630",
+    "20260701", "20260702", "20260703", "20260704",
+    "20260705", "20260706", "20260707", "20260708",
+    "20260709", "20260710", "20260711", "20260712",
+    "20260714", "20260715",
+    "20260718", "20260719",
+]
 
 
 # ---------------------------------------------------------------------------
 # Commands
 # ---------------------------------------------------------------------------
 
-def cmd_sync_matches():
-    """Fetch all WC2026 fixtures from OpenFootball and upsert into Firestore /matches."""
-    print("Fetching all fixtures from OpenFootball …")
-    matches = fetch_matches()
+def cmd_sync_fixtures():
+    """
+    Fetch all knockout-stage fixtures from ESPN and update Firestore with the
+    correct team names, logos, and stage. Creates missing docs (e.g. third-place
+    match). Run whenever team assignments change (best-thirds, etc.).
+    """
+    print("Fetching knockout fixtures from ESPN …")
+    events = fetch_events(KNOCKOUT_DATES)
+    knockout = [e for e in events if e["stage"] in (
+        "round_of_32", "round_of_16", "quarterfinal", "semifinal", "third_place", "final"
+    )]
 
-    if not matches:
-        print("No fixtures returned. Nothing to sync.")
+    if not knockout:
+        print("No knockout events returned. Nothing to update.")
         return
 
-    print(f"Received {len(matches)} fixtures.")
+    print(f"Received {len(knockout)} knockout event(s) from ESPN.")
 
     db = get_db()
     matches_col = db.collection("matches")
 
     operations = []
-    for match in matches:
-        doc_id, doc = build_match_doc(match)
-        if not doc_id:
-            continue
-        operations.append((matches_col.document(doc_id), doc, True))
+    created = 0
 
-    if not operations:
-        print("No valid fixtures to write.")
-        return
+    for event in knockout:
+        docs = list(
+            matches_col.where("matchDate", "==", event["event_dt"]).limit(1).stream()
+        )
 
-    # Seed 'upcoming' only on brand-new documents so we never clobber sync-results data.
-    existing_ids = {snap.id for snap in matches_col.stream()}
-    for ref, doc, merge in operations:
-        if ref.id not in existing_ids and "status" not in doc:
-            doc["status"] = "upcoming"
+        update: dict = {
+            "homeTeam": event["home_team"],
+            "awayTeam": event["away_team"],
+            "homeTeamFlag": event["home_logo"] or "🏳️",
+            "awayTeamFlag": event["away_logo"] or "🏳️",
+            "stage": event["stage"],
+        }
 
-    print(f"Writing {len(operations)} matches to Firestore …")
-    created, updated = commit_batches(db, operations)
-    print(f"Synced {len(operations)} matches ({created} created, {updated} updated)")
+        if docs:
+            operations.append((docs[0].reference, update, True))
+        else:
+            # Doc missing — create it (e.g. third-place match)
+            dt: datetime = event["event_dt"]
+            doc_id = f"espn_{dt.strftime('%Y%m%d_%H%M')}"
+            update["matchDate"] = dt
+            update["externalId"] = doc_id
+            update["status"] = "upcoming"
+            update["group"] = None
+            operations.append((matches_col.document(doc_id), update, False))
+            created += 1
+            print(f"  Creating missing doc: {event['home_team']} vs {event['away_team']} ({dt})")
+
+    print(f"Writing {len(operations)} update(s) ({created} new, {len(operations) - created} updated) …")
+    commit_batches(db, operations)
+    print(f"Done. Synced {len(operations)} fixture(s).")
 
 
 def cmd_sync_results():
-    """Fetch finished matches from ESPN and update score/status in Firestore."""
+    """
+    Fetch finished matches from ESPN (yesterday + today) and update Firestore.
+    Matches by UTC timestamp, so team names and logos are also kept current —
+    useful for knockout matches where teams were previously TBD.
+    """
     print("Fetching finished matches from ESPN …")
     finished = fetch_finished_matches()
 
@@ -70,23 +106,29 @@ def cmd_sync_results():
     matches_col = db.collection("matches")
 
     operations = []
-    for match in finished:
+    for event in finished:
         docs = list(
-            matches_col
-            .where("homeTeam", "==", match["home_team"])
-            .where("awayTeam", "==", match["away_team"])
-            .limit(1)
-            .stream()
+            matches_col.where("matchDate", "==", event["event_dt"]).limit(1).stream()
         )
         if not docs:
-            print(f"WARNING: No Firestore doc found for {match['home_team']} vs {match['away_team']}")
+            print(
+                f"WARNING: No Firestore doc for "
+                f"{event['home_team']} vs {event['away_team']} at {event['event_dt']}"
+            )
             continue
-        partial_doc = {
-            "homeScore": match["home_score"],
-            "awayScore": match["away_score"],
+
+        existing = docs[0].to_dict()
+        update: dict = {
+            # Keep team names/logos current (resolves TBD knockout slots)
+            "homeTeam": event["home_team"],
+            "awayTeam": event["away_team"],
+            "homeTeamFlag": event["home_logo"] or existing.get("homeTeamFlag", "🏳️"),
+            "awayTeamFlag": event["away_logo"] or existing.get("awayTeamFlag", "🏳️"),
+            "homeScore": event["home_score"],
+            "awayScore": event["away_score"],
             "status": "finished",
         }
-        operations.append((docs[0].reference, partial_doc, True))
+        operations.append((docs[0].reference, update, True))
 
     print(f"Updating {len(operations)} match result(s) in Firestore …")
     for i in range(0, len(operations), BATCH_SIZE):
@@ -95,7 +137,7 @@ def cmd_sync_results():
             db_batch.set(doc_ref, data, merge=merge)
         db_batch.commit()
 
-    print(f"Updated {len(operations)} match result(s)")
+    print(f"Updated {len(operations)} match result(s).")
 
 
 def cmd_process_scores():
@@ -157,7 +199,7 @@ def cmd_process_scores():
                 db_batch.set(doc_ref, data, merge=merge)
             db_batch.commit()
 
-    print(f"Processed {total_processed} prediction(s), updated {len(user_ops)} user score(s)")
+    print(f"Processed {total_processed} prediction(s), updated {len(user_ops)} user score(s).")
 
 
 def cmd_sync_logos():
@@ -213,7 +255,7 @@ def cmd_sync_logos():
 # ---------------------------------------------------------------------------
 
 COMMANDS = {
-    "sync-matches": cmd_sync_matches,
+    "sync-fixtures": cmd_sync_fixtures,
     "sync-results": cmd_sync_results,
     "process-scores": cmd_process_scores,
     "sync-logos": cmd_sync_logos,
@@ -223,14 +265,19 @@ USAGE = """\
 Usage: uv run python main.py <command>
 
 Commands:
-  sync-matches    Fetch all WC2026 fixtures from OpenFootball and upsert into
-                  Firestore /matches. Run once before the tournament.
+  sync-fixtures   Fetch knockout-stage fixtures from ESPN and update team names,
+                  logos, and stages in Firestore. Run whenever new teams are
+                  confirmed (e.g. best-thirds finalized, bracket advances).
 
-  sync-results    Fetch finished matches and update scores/status in Firestore.
-                  Run daily after match days.
+  sync-results    Fetch finished matches from ESPN (yesterday + today) and update
+                  scores, status, and team info in Firestore. Run daily after
+                  match days. Also resolves previously-TBD team names.
 
   process-scores  Calculate prediction points for every finished match and
                   recompute totalScore for every user. Idempotent.
+
+  sync-logos      (Legacy) Bulk-update team logo URLs from ESPN for all dates.
+                  sync-fixtures and sync-results now keep logos current.
 """
 
 
