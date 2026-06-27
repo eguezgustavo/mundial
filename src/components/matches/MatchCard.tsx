@@ -85,7 +85,7 @@ export function MatchCard({ match, prediction, now, onSubmitPrediction }: MatchC
                 <span className="ml-1 text-white/50">({WINNER_LABEL[prediction.predictedWinner]})</span>
               </span>
               <span className={`font-bold ${prediction.points === 20 ? 'text-[#ffd700]' : prediction.points === 5 ? 'text-green-400' : 'text-white/40'}`}>
-                {prediction.points !== null ? `+${prediction.points} pts` : 'Pendiente'}
+                {prediction.points != null ? `+${prediction.points} pts` : 'Pendiente'}
               </span>
             </div>
           ) : (
