@@ -57,7 +57,7 @@ def cmd_sync_fixtures():
 
     for event in knockout:
         docs = list(
-            matches_col.where("matchDate", "==", event["event_dt"]).limit(1).stream()
+            matches_col.where("matchDate", "==", event["event_dt"]).stream()
         )
 
         update: dict = {
@@ -69,6 +69,7 @@ def cmd_sync_fixtures():
         }
 
         if docs:
+            # Knockout matches have unique timeslots — one doc per time
             operations.append((docs[0].reference, update, True))
         else:
             # Doc missing — create it (e.g. third-place match)
@@ -107,17 +108,25 @@ def cmd_sync_results():
 
     operations = []
     for event in finished:
-        docs = list(
-            matches_col.where("matchDate", "==", event["event_dt"]).limit(1).stream()
+        # Multiple matches can share the same matchDate (group stage pairs), so
+        # fetch all docs at that time and disambiguate by team name involvement.
+        candidates = list(
+            matches_col.where("matchDate", "==", event["event_dt"]).stream()
         )
-        if not docs:
+        teams = {event["home_team"], event["away_team"]}
+        target = next(
+            (d for d in candidates
+             if {d.to_dict().get("homeTeam"), d.to_dict().get("awayTeam")} & teams),
+            candidates[0] if len(candidates) == 1 else None,
+        )
+        if not target:
             print(
                 f"WARNING: No Firestore doc for "
                 f"{event['home_team']} vs {event['away_team']} at {event['event_dt']}"
             )
             continue
 
-        existing = docs[0].to_dict()
+        existing = target.to_dict()
         update: dict = {
             # Keep team names/logos current (resolves TBD knockout slots)
             "homeTeam": event["home_team"],
@@ -128,7 +137,7 @@ def cmd_sync_results():
             "awayScore": event["away_score"],
             "status": "finished",
         }
-        operations.append((docs[0].reference, update, True))
+        operations.append((target.reference, update, True))
 
     print(f"Updating {len(operations)} match result(s) in Firestore …")
     for i in range(0, len(operations), BATCH_SIZE):

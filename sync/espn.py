@@ -35,7 +35,7 @@ def fetch_events(date_strs: list[str]) -> list[dict]:
     Fetch all match events from ESPN for the given date strings (YYYYMMDD).
     Returns a list of dicts with full event info. Deduplicates by UTC datetime.
     """
-    seen_dts: set[datetime] = set()
+    seen_ids: set[str] = set()
     events_out: list[dict] = []
 
     for date in date_strs:
@@ -47,13 +47,15 @@ def fetch_events(date_strs: list[str]) -> list[dict]:
             continue
 
         for event in resp.json().get("events", []):
+            event_id = event.get("id", "")
+            if not event_id or event_id in seen_ids:
+                continue
+            seen_ids.add(event_id)
+
             dt_str = event.get("date", "")
             if not dt_str:
                 continue
             event_dt = parse_espn_datetime(dt_str)
-            if event_dt in seen_dts:
-                continue
-            seen_dts.add(event_dt)
 
             competition = event.get("competitions", [{}])[0]
             competitors = competition.get("competitors", [])
