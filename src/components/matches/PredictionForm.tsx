@@ -18,7 +18,7 @@ export function PredictionForm({ match, existing, onSubmit }: PredictionFormProp
   );
   const [saving, setSaving] = useState(false);
 
-  const canTie = match.stage === 'group';
+  const canTie = true;
 
   const handleSubmit = async () => {
     if (!winner || homeScore === '' || awayScore === '') return;
