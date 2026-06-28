@@ -24,6 +24,10 @@ jobs:
           SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
         run: echo "$SERVICE_ACCOUNT" > sync/serviceAccount.json
 
+      - name: Sync fixtures
+        run: python main.py sync-fixtures
+        working-directory: sync
+
       - name: Sync results
         run: python main.py sync-results
         working-directory: sync
