@@ -1,14 +1,13 @@
 import { useState } from 'react';
-import { Match, Prediction, PredictedWinner } from '../../types';
+import { Prediction, PredictedWinner } from '../../types';
 import { Button } from '../ui/Button';
 
 interface PredictionFormProps {
-  match: Match;
   existing?: Prediction;
   onSubmit: (winner: PredictedWinner, homeScore: number, awayScore: number) => Promise<void>;
 }
 
-export function PredictionForm({ match, existing, onSubmit }: PredictionFormProps) {
+export function PredictionForm({ existing, onSubmit }: PredictionFormProps) {
   const [winner, setWinner] = useState<PredictedWinner | null>(existing?.predictedWinner ?? null);
   const [homeScore, setHomeScore] = useState<string>(
     existing?.predictedHomeScore !== undefined ? String(existing.predictedHomeScore) : ''

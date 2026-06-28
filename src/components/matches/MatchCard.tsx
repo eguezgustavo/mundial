@@ -104,7 +104,6 @@ export function MatchCard({ match, prediction, now, onSubmitPrediction }: MatchC
         </div>
       ) : (
         <PredictionForm
-          match={match}
           existing={prediction}
           onSubmit={handleSubmit}
         />
