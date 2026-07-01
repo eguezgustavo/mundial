@@ -119,12 +119,31 @@ def cmd_sync_results():
              if {d.to_dict().get("homeTeam"), d.to_dict().get("awayTeam")} & teams),
             candidates[0] if len(candidates) == 1 else None,
         )
+
+        # Fallback: ESPN sometimes reports a different UTC timestamp than what was
+        # pre-loaded (e.g. off by an hour due to DST or data entry). Search by team
+        # name among non-finished docs within the same stage.
         if not target:
-            print(
-                f"WARNING: No Firestore doc for "
-                f"{event['home_team']} vs {event['away_team']} at {event['event_dt']}"
+            by_home = list(matches_col.where("homeTeam", "==", event["home_team"]).stream())
+            by_away = list(matches_col.where("awayTeam", "==", event["away_team"]).stream())
+            fallback = next(
+                (d for d in by_home + by_away
+                 if {d.to_dict().get("homeTeam"), d.to_dict().get("awayTeam")} == teams
+                 and d.to_dict().get("status") != "finished"),
+                None,
             )
-            continue
+            if fallback:
+                print(
+                    f"INFO: Matched {event['home_team']} vs {event['away_team']} "
+                    f"by team name (ESPN time {event['event_dt']} differed from stored matchDate)"
+                )
+                target = fallback
+            else:
+                print(
+                    f"WARNING: No Firestore doc for "
+                    f"{event['home_team']} vs {event['away_team']} at {event['event_dt']}"
+                )
+                continue
 
         existing = target.to_dict()
         update: dict = {

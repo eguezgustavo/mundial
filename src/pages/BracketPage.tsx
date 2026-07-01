@@ -20,11 +20,15 @@ const matchTop = (round: number, pos: number) =>
 const roundX = (round: number) => round * COL;
 
 // ── WC 2026 bracket order (top→bottom within each stage) ─────────────────────
+// Source: official FIFA bracket (fifa.com)
+// R16 pairings: 89(74v77), 90(73v75), 91(76v78), 92(79v80),
+//               93(83v84), 94(81v82), 95(86v88), 96(85v87)
+// QF: 97(89v90), 98(93v94), 99(91v92), 100(95v96)
 const BRACKET_ORDER = {
-  r32: [0,2,1,4,10,11,8,9,  3,5,6,7,13,15,12,14],
-  r16: [0,1,4,5,  2,3,6,7],
-  qf:  [0,1,  2,3],
-  sf:  [0,1],
+  r32: [2, 5, 0, 3,  11,10, 9, 8,  1, 4, 6, 7,  14,13,12,15],
+  r16: [1, 0, 4, 5,   2, 3, 6, 7],
+  qf:  [0, 1, 2, 3],
+  sf:  [0, 1],
 } as const;
 
 // ── Name shortening ───────────────────────────────────────────────────────────
