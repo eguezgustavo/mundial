@@ -48,14 +48,9 @@ Create documents in `/users/<token>` for each player:
 Invite link: `https://yourapp.com/?token=unique-random-token`
 Use a UUID generator for tokens.
 
-### 6. Configure API-Football
-In Firestore, create `/config/apiFootball`:
-```json
-{
-  "apiKey": "your-api-football-key"
-}
-```
-Get a free key at [api-sports.io](https://api-sports.io).
+### 6. Populate match data
+Match data is fetched from ESPN and written to Firestore by the sync script in
+`sync/`. See [`sync/README.md`](sync/README.md) for setup and commands.
 
 ### 7. Run locally
 ```bash

@@ -36,7 +36,3 @@ export interface Prediction {
   submittedAt: Timestamp;
   points: number | null;
 }
-
-export interface ApiFootballConfig {
-  apiKey: string;
-}

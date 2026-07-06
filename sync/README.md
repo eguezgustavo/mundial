@@ -1,9 +1,9 @@
 # Mundial Sync — FIFA World Cup 2026 Data Processor
 
 This is the **authoritative data processor** for the Mundial prediction app.
-It fetches match data from [API-Football](https://www.api-football.com/) and
-writes it to Firestore. The frontend app never calls the API directly — only
-this script does.
+It fetches match data from the [ESPN scoreboard API](https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard)
+(no API key required) and writes it to Firestore. The frontend app never
+calls the API directly — only this script does.
 
 ---
 
@@ -14,7 +14,6 @@ this script does.
 - [uv](https://docs.astral.sh/uv/getting-started/installation/) installed
 - Python 3.11+ (uv will manage this automatically)
 - A Firebase project with Firestore enabled
-- An API-Football account (free tier works)
 
 ### 2. Install dependencies
 
@@ -29,10 +28,9 @@ uv sync
 cp .env.example .env
 ```
 
-Edit `.env` and fill in both values:
+Edit `.env`:
 
 ```
-API_FOOTBALL_KEY=your_api_football_key_here
 FIREBASE_SERVICE_ACCOUNT_PATH=./serviceAccount.json
 ```
 
@@ -52,29 +50,24 @@ FIREBASE_SERVICE_ACCOUNT_PATH=./serviceAccount.json
 
 Run all commands with `uv run`:
 
-### `uv run python main.py sync-matches`
+### `uv run python main.py sync-fixtures`
 
-Fetches **all** World Cup 2026 fixtures from API-Football and upserts them into
-Firestore at `/matches/{externalId}`.
-
-Fields written per match document:
-
-| Field | Source |
-|---|---|
-| `externalId` | `fixture.id` |
-| `homeTeam` / `awayTeam` | `teams.home.name` / `teams.away.name` |
-| `homeTeamFlag` / `awayTeamFlag` | flag emoji map |
-| `matchDate` | `fixture.date` (Firestore Timestamp) |
-| `stage` | mapped from `league.round` |
-| `group` | extracted letter from round string (group stage only) |
-| `homeScore` / `awayScore` | `goals.home` / `goals.away` (only when FT) |
-| `status` | `"finished"` if FT, else `"upcoming"` |
+Fetches knockout-stage fixtures (Round of 32 through Final) from ESPN and
+updates team names, logos, and stage in Firestore, creating docs for
+matches that don't exist yet (e.g. the third-place match). Run whenever new
+teams are confirmed — best-thirds finalized, bracket advances, etc.
 
 ### `uv run python main.py sync-results`
 
-Fetches only **finished** (status `FT`) fixtures and updates the score and
-status fields in Firestore. Faster than a full sync — run this after each
-match day.
+Fetches finished matches from ESPN (yesterday + today) and updates score,
+status, and team info in Firestore. Also resolves previously-TBD knockout
+team names. Run daily after match days.
+
+### `uv run python main.py sync-logos`
+
+Fetches team logo URLs from ESPN for every match date already in Firestore
+and backfills `homeTeamFlag` / `awayTeamFlag` on any match document missing
+one.
 
 ### `uv run python main.py process-scores`
 
@@ -93,20 +86,13 @@ This command is **idempotent** — safe to run multiple times.
 
 ## Recommended workflow
 
-### Before the tournament starts
+### Daily (automated via `.github/workflows/daily-sync.yml`)
 
 ```bash
-uv run python main.py sync-matches   # one-time full fixture import
+uv run python main.py sync-fixtures   # pick up newly-confirmed teams
+uv run python main.py sync-results    # update scores for finished matches
+uv run python main.py process-scores  # recalculate prediction points & leaderboard
 ```
-
-### Daily (after match days)
-
-```bash
-uv run python main.py sync-results   # update scores for finished matches
-uv run python main.py process-scores # recalculate prediction points & leaderboard
-```
-
-You can automate these with a cron job or GitHub Actions scheduled workflow.
 
 ---
 
@@ -120,7 +106,7 @@ You can automate these with a cron job or GitHub Actions scheduled workflow.
   homeTeamFlag: string
   awayTeamFlag: string
   matchDate: Timestamp
-  stage: "group" | "round_of_32" | "round_of_16" | "quarterfinal" | "semifinal" | "final"
+  stage: "group" | "round_of_32" | "round_of_16" | "quarterfinal" | "semifinal" | "third_place" | "final"
   group: string | null        # e.g. "A", "B" — only for group stage
   homeScore: number | null    # null until match is finished
   awayScore: number | null

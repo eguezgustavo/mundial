@@ -54,13 +54,34 @@ def cmd_sync_fixtures():
 
     operations = []
     created = 0
+    claimed_ids: set[str] = set()
 
+    # Pass 1: exact matchDate matches (the common case).
+    unmatched = []
     for event in knockout:
-        docs = list(
-            matches_col.where("matchDate", "==", event["event_dt"]).stream()
-        )
+        docs = [
+            d for d in matches_col.where("matchDate", "==", event["event_dt"]).stream()
+            if d.id not in claimed_ids
+        ]
+        if docs:
+            claimed_ids.add(docs[0].id)
+            update: dict = {
+                "homeTeam": event["home_team"],
+                "awayTeam": event["away_team"],
+                "homeTeamFlag": event["home_logo"] or "🏳️",
+                "awayTeamFlag": event["away_logo"] or "🏳️",
+                "stage": event["stage"],
+            }
+            operations.append((docs[0].reference, update, True))
+        else:
+            unmatched.append(event)
 
-        update: dict = {
+    # Pass 2: ESPN sometimes reports a different UTC timestamp than what was
+    # pre-loaded (e.g. off by an hour due to DST or a schedule change). Before
+    # creating a new doc, look for an unclaimed doc in the same stage within a
+    # couple hours of the ESPN time and reuse it instead of duplicating the match.
+    for event in unmatched:
+        update = {
             "homeTeam": event["home_team"],
             "awayTeam": event["away_team"],
             "homeTeamFlag": event["home_logo"] or "🏳️",
@@ -68,9 +89,26 @@ def cmd_sync_fixtures():
             "stage": event["stage"],
         }
 
-        if docs:
-            # Knockout matches have unique timeslots — one doc per time
-            operations.append((docs[0].reference, update, True))
+        window_start = event["event_dt"] - timedelta(hours=2)
+        window_end = event["event_dt"] + timedelta(hours=2)
+        nearby = [
+            d for d in matches_col.where("stage", "==", event["stage"]).stream()
+            if d.id not in claimed_ids
+            and window_start <= d.to_dict().get("matchDate") <= window_end
+        ]
+
+        target = min(
+            nearby, key=lambda d: abs(d.to_dict()["matchDate"] - event["event_dt"])
+        ) if nearby else None
+
+        if target:
+            claimed_ids.add(target.id)
+            print(
+                f"INFO: Matched {event['home_team']} vs {event['away_team']} by "
+                f"nearby matchDate (ESPN time {event['event_dt']} differed from "
+                f"stored matchDate {target.to_dict()['matchDate']})"
+            )
+            operations.append((target.reference, update, True))
         else:
             # Doc missing — create it (e.g. third-place match)
             dt: datetime = event["event_dt"]
