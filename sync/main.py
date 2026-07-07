@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from espn import fetch_events, fetch_finished_matches, fetch_team_logos
+from espn import fetch_events, fetch_finished_matches, fetch_team_logos, fetch_top_scorers
 from firebase_client import get_db, commit_batches, BATCH_SIZE
 from scoring import calculate_points
 
@@ -316,6 +316,28 @@ def cmd_sync_logos():
     print(f"Updated {len(operations)} match document(s).")
 
 
+def cmd_sync_top_scorers():
+    """
+    Fetch the tournament-wide goals leaderboard from ESPN and write it to
+    Firestore at /stats/topScorers. Run daily so the Goleadores tab stays current.
+    """
+    print("Fetching top scorers from ESPN …")
+    scorers = fetch_top_scorers()
+
+    if not scorers:
+        print("No scorer data returned. Nothing to update.")
+        return
+
+    print(f"Found {len(scorers)} scorer(s).")
+
+    db = get_db()
+    db.collection("stats").document("topScorers").set({
+        "players": scorers,
+        "updatedAt": datetime.now(timezone.utc),
+    })
+    print(f"Updated top scorers ({len(scorers)} player(s)).")
+
+
 # ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
@@ -325,6 +347,7 @@ COMMANDS = {
     "sync-results": cmd_sync_results,
     "process-scores": cmd_process_scores,
     "sync-logos": cmd_sync_logos,
+    "sync-top-scorers": cmd_sync_top_scorers,
 }
 
 USAGE = """\
@@ -344,6 +367,9 @@ Commands:
 
   sync-logos      (Legacy) Bulk-update team logo URLs from ESPN for all dates.
                   sync-fixtures and sync-results now keep logos current.
+
+  sync-top-scorers  Fetch the tournament-wide goals leaderboard from ESPN and
+                  write it to Firestore for the Goleadores tab. Run daily.
 """
 
 

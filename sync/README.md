@@ -69,6 +69,11 @@ Fetches team logo URLs from ESPN for every match date already in Firestore
 and backfills `homeTeamFlag` / `awayTeamFlag` on any match document missing
 one.
 
+### `uv run python main.py sync-top-scorers`
+
+Fetches the tournament-wide goals leaderboard from ESPN and writes it to
+`/stats/topScorers` for the app's Goleadores tab. Run daily.
+
 ### `uv run python main.py process-scores`
 
 For every finished match in Firestore:
@@ -89,9 +94,10 @@ This command is **idempotent** — safe to run multiple times.
 ### Daily (automated via `.github/workflows/daily-sync.yml`)
 
 ```bash
-uv run python main.py sync-fixtures   # pick up newly-confirmed teams
-uv run python main.py sync-results    # update scores for finished matches
-uv run python main.py process-scores  # recalculate prediction points & leaderboard
+uv run python main.py sync-fixtures     # pick up newly-confirmed teams
+uv run python main.py sync-results      # update scores for finished matches
+uv run python main.py process-scores    # recalculate prediction points & leaderboard
+uv run python main.py sync-top-scorers  # refresh the goals leaderboard
 ```
 
 ---
@@ -122,4 +128,14 @@ uv run python main.py process-scores  # recalculate prediction points & leaderbo
 
 /users/{userId}
   totalScore: number          # written by process-scores
+
+/stats/topScorers
+  players: array              # ranked list, written by sync-top-scorers
+    rank: number
+    name: string               # player display name
+    team: string                # country name
+    teamFlag: string            # team logo URL
+    goals: number
+    appearances: number | null
+  updatedAt: Timestamp
 ```

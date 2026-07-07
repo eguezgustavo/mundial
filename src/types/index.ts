@@ -36,3 +36,12 @@ export interface Prediction {
   submittedAt: Timestamp;
   points: number | null;
 }
+
+export interface TopScorer {
+  rank: number;
+  name: string;
+  team: string;
+  teamFlag: string;
+  goals: number;
+  appearances: number | null;
+}

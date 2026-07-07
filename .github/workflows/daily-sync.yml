@@ -35,3 +35,7 @@ jobs:
       - name: Process scores
         run: python main.py process-scores
         working-directory: sync
+
+      - name: Sync top scorers
+        run: python main.py sync-top-scorers
+        working-directory: sync

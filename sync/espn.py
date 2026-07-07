@@ -8,6 +8,7 @@ from datetime import datetime, timezone, timedelta
 import requests
 
 SCOREBOARD_URL = "https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard"
+STATISTICS_URL = "https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/statistics"
 
 # ESPN season.slug → Firestore stage value
 ESPN_SLUG_TO_STAGE: dict[str, str] = {
@@ -96,6 +97,46 @@ def fetch_team_logos(date_strs: list[str]) -> dict[str, str]:
             if logo and name not in logos:
                 logos[name] = logo
     return logos
+
+
+def fetch_top_scorers() -> list[dict]:
+    """
+    Fetch the tournament-wide goals leaderboard from ESPN.
+    Returns a ranked list of dicts: rank, name, team, teamFlag, goals, appearances.
+    """
+    try:
+        resp = requests.get(STATISTICS_URL, timeout=30)
+        resp.raise_for_status()
+    except requests.exceptions.RequestException as exc:
+        print(f"WARNING: Could not fetch ESPN statistics: {exc}")
+        return []
+
+    goals_category = next(
+        (s for s in resp.json().get("stats", []) if s.get("name") == "goalsLeaders"),
+        None,
+    )
+    if not goals_category:
+        return []
+
+    scorers = []
+    for i, leader in enumerate(goals_category.get("leaders", [])):
+        athlete = leader.get("athlete", {})
+        team = athlete.get("team", {})
+        appearances = next(
+            (s["value"] for s in athlete.get("statistics", []) if s.get("name") == "appearances"),
+            None,
+        )
+        logos = team.get("logos", [])
+        scorers.append({
+            "rank": i + 1,
+            "name": athlete.get("displayName", ""),
+            "team": team.get("displayName", ""),
+            "teamFlag": logos[0]["href"] if logos else "",
+            "goals": int(leader.get("value", 0)),
+            "appearances": int(appearances) if appearances is not None else None,
+        })
+
+    return scorers
 
 
 def fetch_finished_matches() -> list[dict]:
